@@ -25,20 +25,21 @@ var (
 )
 
 func InitApolloClient() {
+	// 初始化 Apollo 客户端
 	once.Do(func() {
-		// 初始化 Apollo 客户端
+		// 自定义组件
 		agollo.SetLogger(&logger.DefaultLogger{})
 		agollo.SetCache(&cache.ConfigMapCacheFactory{})
-
-		client, err := agollo.StartWithConfig(func() (*config.AppConfig, error) {
-			return c, nil
-		})
-		if err != nil {
-			fmt.Println("err:", err)
-			panic(err)
-		}
-		clientInstance = &client
 	})
+
+	client, err := agollo.StartWithConfig(func() (*config.AppConfig, error) {
+		return c, nil
+	})
+	if err != nil {
+		fmt.Println("err:", err)
+		panic(err)
+	}
+	clientInstance = &client
 }
 
 // 提供实例的暴露点

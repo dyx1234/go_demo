@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/apolloconfig/agollo/v4/agcache"
+	"go_demo/info"
+	"go_demo/manager"
 	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,8 +14,9 @@ import (
 )
 
 type ConfigMapCache struct {
-	clientset *kubernetes.Clientset
-	namespace string
+	clientset     *kubernetes.Clientset
+	namespace     string
+	configMapName string
 }
 
 func (c *ConfigMapCache) Set(key string, value interface{}, expireSeconds int) error {
@@ -26,7 +29,8 @@ func (c *ConfigMapCache) Set(key string, value interface{}, expireSeconds int) e
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	configMapName := "apollo-cache" // 假定使用固定的 ConfigMap 名称
+	// 假定使用固定的 ConfigMap 名称
+	configMapName := info.ConfigMapName
 	data := map[string]string{
 		key: valueStr,
 	}
@@ -58,7 +62,7 @@ func (c *ConfigMapCache) EntryCount() (entryCount int64) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cm, err := c.clientset.CoreV1().ConfigMaps(c.namespace).Get(ctx, "apollo-cache", metaV1.GetOptions{})
+	cm, err := c.clientset.CoreV1().ConfigMaps(c.namespace).Get(ctx, c.configMapName, metaV1.GetOptions{})
 	if err != nil {
 		return 0
 	}
@@ -70,7 +74,7 @@ func (c *ConfigMapCache) Get(key string) (value interface{}, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cm, err := c.clientset.CoreV1().ConfigMaps(c.namespace).Get(ctx, "apollo-cache", metaV1.GetOptions{})
+	cm, err := c.clientset.CoreV1().ConfigMaps(c.namespace).Get(ctx, c.configMapName, metaV1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +90,7 @@ func (c *ConfigMapCache) Del(key string) (affected bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cm, err := c.clientset.CoreV1().ConfigMaps(c.namespace).Get(ctx, "apollo-cache", metaV1.GetOptions{})
+	cm, err := c.clientset.CoreV1().ConfigMaps(c.namespace).Get(ctx, c.configMapName, metaV1.GetOptions{})
 	if err != nil {
 		return false
 	}
@@ -100,7 +104,7 @@ func (c *ConfigMapCache) Range(f func(key, value interface{}) bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cm, err := c.clientset.CoreV1().ConfigMaps(c.namespace).Get(ctx, "apollo-cache", metaV1.GetOptions{})
+	cm, err := c.clientset.CoreV1().ConfigMaps(c.namespace).Get(ctx, c.configMapName, metaV1.GetOptions{})
 	if err != nil {
 		return
 	}
@@ -116,7 +120,7 @@ func (c *ConfigMapCache) Clear() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	err := c.clientset.CoreV1().ConfigMaps(c.namespace).Delete(ctx, "apollo-cache", metaV1.DeleteOptions{})
+	err := c.clientset.CoreV1().ConfigMaps(c.namespace).Delete(ctx, c.configMapName, metaV1.DeleteOptions{})
 	if err != nil {
 		fmt.Println("Failed to clear cache:", err)
 	}
@@ -125,14 +129,16 @@ func (c *ConfigMapCache) Clear() {
 // ConfigMapCacheFactory 用于创建 ConfigMapCache 实例的工厂
 type ConfigMapCacheFactory struct {
 	// 可以添加一些配置参数，比如客户端配置、命名空间等
-	clientset *kubernetes.Clientset
-	namespace string
+	clientset     *kubernetes.Clientset
+	namespace     string
+	configMapName string
 }
 
 // Create 创建并返回一个实现了 CacheInterface 的 ConfigMapCache 实例
 func (f *ConfigMapCacheFactory) Create() agcache.CacheInterface {
 	return &ConfigMapCache{
-		clientset: f.clientset,
-		namespace: f.namespace,
+		clientset:     manager.GetClientSet(),
+		namespace:     info.Namespace,
+		configMapName: info.ConfigMapName,
 	}
 }

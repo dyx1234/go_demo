@@ -1,0 +1,20 @@
+apiVersion: v1
+data:
+  mysql.db.host: 10.18.15.86
+  mysql.db.name: nacos
+  mysql.param: characterEncoding=utf8&serverTimezone=UTC&connectTimeout=10000&socketTimeout=30000&autoReconnect=true&useSSL=false
+  mysql.password: devops
+  mysql.port: "3306"
+  mysql.user: root
+kind: ConfigMap
+metadata:
+  annotations:
+    meta.helm.sh/release-name: nacos-hyl
+    meta.helm.sh/release-namespace: default
+  creationTimestamp: "2023-11-09T07:36:45Z"
+  labels:
+    app.kubernetes.io/managed-by: Helm
+  name: nacos-cm
+  namespace: default
+  resourceVersion: "27955792"
+  uid: dc8ba3ae-6fe7-47b2-af67-937653a06f72

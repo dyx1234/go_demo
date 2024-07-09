@@ -3,11 +3,12 @@ package manager
 import (
 	"context"
 	"fmt"
+	"go_demo/info"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"time"
 )
 
@@ -22,12 +23,18 @@ type ConfigMapInfo struct {
 }
 
 func NewKubernetesManager() (*KubernetesManager, error) {
-	// TODO 连接k8s集群
-	// 使用InClusterConfig()在集群内部获取配置
-	config, err := rest.InClusterConfig()
+	// kubeConfig连接k8s集群
+	path := info.ConfigPath
+	config, err := clientcmd.BuildConfigFromFlags("", path)
 	if err != nil {
-		fmt.Printf("Can't get in-cluster config: %v\n", err)
+		fmt.Printf("Can't get config.yaml: %v\n", err)
 	}
+
+	// 使用InClusterConfig()在集群内部获取配置
+	//config, err := rest.InClusterConfig()
+	//if err != nil {
+	//	fmt.Printf("Can't get in-cluster config: %v\n", err)
+	//}
 
 	// 使用配置创建Kubernetes客户端
 	client, err := kubernetes.NewForConfig(config)
@@ -35,6 +42,14 @@ func NewKubernetesManager() (*KubernetesManager, error) {
 		fmt.Printf("Can't create Kubernetes client: %v\n", err)
 	}
 	return &KubernetesManager{client: client}, nil
+}
+
+func GetClientSet() *kubernetes.Clientset {
+	config, err := clientcmd.BuildConfigFromFlags("", info.ConfigPath)
+	if err != nil {
+		fmt.Printf("Can't get config.yaml: %v\n", err)
+	}
+	return kubernetes.NewForConfigOrDie(config)
 }
 
 // 根据key获取ConfigMap中的value
