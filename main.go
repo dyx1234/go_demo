@@ -1,16 +1,23 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
-	"go_demo/config"
-	"go_demo/manager"
+	"go_demo/component/cache"
 	"go_demo/server"
+	"os"
 )
+
+var port = ":8082"
 
 func main() {
 
-	manager.NewKubernetesManager()
-	config.InitApolloClient()
+	// 初始化 Kubernetes 管理器
+	_, err := cache.NewKubernetesManager()
+	if err != nil {
+		fmt.Printf("Failed to initialize Kubernetes manager: %v\n", err)
+		os.Exit(1)
+	}
 
 	// 创建 Gin 实例
 	r := gin.Default()
@@ -19,6 +26,10 @@ func main() {
 	server.SetupRoutes(r)
 
 	// 运行 Web 服务
-	r.Run(":8082")
+	err = r.Run(port)
+	if err != nil {
+		fmt.Printf("Failed to start the server on port %s: %v\n", port, err)
+		os.Exit(1)
+	}
 
 }

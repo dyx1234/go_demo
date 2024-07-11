@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/apolloconfig/agollo/v4/agcache"
 	"go_demo/info"
-	"go_demo/manager"
 	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,10 +12,13 @@ import (
 	"time"
 )
 
+// TODO 职责拆分, 将通用逻辑抽离到manager
+
 type ConfigMapCache struct {
-	clientset     *kubernetes.Clientset
+	clientSet     *kubernetes.Clientset
 	namespace     string
 	configMapName string
+	k8sManager    *KubernetesManager
 }
 
 func (c *ConfigMapCache) Set(key string, value interface{}, expireSeconds int) error {
@@ -36,7 +38,7 @@ func (c *ConfigMapCache) Set(key string, value interface{}, expireSeconds int) e
 	}
 
 	// 尝试获取 ConfigMap，如果不存在则创建
-	cm, err := c.clientset.CoreV1().ConfigMaps(c.namespace).Get(ctx, configMapName, metaV1.GetOptions{})
+	cm, err := c.clientSet.CoreV1().ConfigMaps(c.namespace).Get(ctx, configMapName, metaV1.GetOptions{})
 	if errors.IsNotFound(err) {
 		cm = &coreV1.ConfigMap{
 			ObjectMeta: metaV1.ObjectMeta{
@@ -45,36 +47,36 @@ func (c *ConfigMapCache) Set(key string, value interface{}, expireSeconds int) e
 			},
 			Data: data,
 		}
-		_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Create(ctx, cm, metaV1.CreateOptions{})
+		_, err = c.clientSet.CoreV1().ConfigMaps(c.namespace).Create(ctx, cm, metaV1.CreateOptions{})
 	} else if err != nil {
 		return err
 	} else {
 		// ConfigMap 存在，更新数据
 		cm.Data[key] = valueStr
-		_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Update(ctx, cm, metaV1.UpdateOptions{})
+		_, err = c.clientSet.CoreV1().ConfigMaps(c.namespace).Update(ctx, cm, metaV1.UpdateOptions{})
 	}
 
 	return err
 }
 
-// 实现接口的 EntryCount 方法
+// EntryCount 实现接口的 EntryCount 方法
 func (c *ConfigMapCache) EntryCount() (entryCount int64) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cm, err := c.clientset.CoreV1().ConfigMaps(c.namespace).Get(ctx, c.configMapName, metaV1.GetOptions{})
+	cm, err := c.clientSet.CoreV1().ConfigMaps(c.namespace).Get(ctx, c.configMapName, metaV1.GetOptions{})
 	if err != nil {
 		return 0
 	}
 	return int64(len(cm.Data))
 }
 
-// 实现接口的 Get 方法
+// Get 实现接口的 Get 方法
 func (c *ConfigMapCache) Get(key string) (value interface{}, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cm, err := c.clientset.CoreV1().ConfigMaps(c.namespace).Get(ctx, c.configMapName, metaV1.GetOptions{})
+	cm, err := c.clientSet.CoreV1().ConfigMaps(c.namespace).Get(ctx, c.configMapName, metaV1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -85,26 +87,26 @@ func (c *ConfigMapCache) Get(key string) (value interface{}, err error) {
 	return valueStr, nil
 }
 
-// 实现接口的 Del 方法
+// Del 实现接口的 Del 方法
 func (c *ConfigMapCache) Del(key string) (affected bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cm, err := c.clientset.CoreV1().ConfigMaps(c.namespace).Get(ctx, c.configMapName, metaV1.GetOptions{})
+	cm, err := c.clientSet.CoreV1().ConfigMaps(c.namespace).Get(ctx, c.configMapName, metaV1.GetOptions{})
 	if err != nil {
 		return false
 	}
 	delete(cm.Data, key)
-	_, err = c.clientset.CoreV1().ConfigMaps(c.namespace).Update(ctx, cm, metaV1.UpdateOptions{})
+	_, err = c.clientSet.CoreV1().ConfigMaps(c.namespace).Update(ctx, cm, metaV1.UpdateOptions{})
 	return err == nil
 }
 
-// 实现接口的 Range 方法
+// Range 实现接口的 Range 方法
 func (c *ConfigMapCache) Range(f func(key, value interface{}) bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cm, err := c.clientset.CoreV1().ConfigMaps(c.namespace).Get(ctx, c.configMapName, metaV1.GetOptions{})
+	cm, err := c.clientSet.CoreV1().ConfigMaps(c.namespace).Get(ctx, c.configMapName, metaV1.GetOptions{})
 	if err != nil {
 		return
 	}
@@ -115,12 +117,12 @@ func (c *ConfigMapCache) Range(f func(key, value interface{}) bool) {
 	}
 }
 
-// 实现接口的 Clear 方法
+// Clear 实现接口的 Clear 方法
 func (c *ConfigMapCache) Clear() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	err := c.clientset.CoreV1().ConfigMaps(c.namespace).Delete(ctx, c.configMapName, metaV1.DeleteOptions{})
+	err := c.clientSet.CoreV1().ConfigMaps(c.namespace).Delete(ctx, c.configMapName, metaV1.DeleteOptions{})
 	if err != nil {
 		fmt.Println("Failed to clear cache:", err)
 	}
@@ -129,7 +131,7 @@ func (c *ConfigMapCache) Clear() {
 // ConfigMapCacheFactory 用于创建 ConfigMapCache 实例的工厂
 type ConfigMapCacheFactory struct {
 	// 可以添加一些配置参数，比如客户端配置、命名空间等
-	clientset     *kubernetes.Clientset
+	clientSet     *kubernetes.Clientset
 	namespace     string
 	configMapName string
 }
@@ -137,7 +139,7 @@ type ConfigMapCacheFactory struct {
 // Create 创建并返回一个实现了 CacheInterface 的 ConfigMapCache 实例
 func (f *ConfigMapCacheFactory) Create() agcache.CacheInterface {
 	return &ConfigMapCache{
-		clientset:     manager.GetClientSet(),
+		clientSet:     GetClientSet(),
 		namespace:     info.Namespace,
 		configMapName: info.ConfigMapName,
 	}

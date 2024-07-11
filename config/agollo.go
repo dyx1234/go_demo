@@ -7,7 +7,6 @@ import (
 	"go_demo/component/cache"
 	"go_demo/component/logger"
 	"go_demo/info"
-	"sync"
 )
 
 var c = &config.AppConfig{
@@ -18,19 +17,14 @@ var c = &config.AppConfig{
 	IsBackupConfig: false,
 }
 
-// 单例模式, 只初始化一次
 var (
 	clientInstance *agollo.Client
-	once           sync.Once
 )
 
-func InitApolloClient() {
-	// 初始化 Apollo 客户端
-	once.Do(func() {
-		// 自定义组件
-		agollo.SetLogger(&logger.DefaultLogger{})
-		agollo.SetCache(&cache.ConfigMapCacheFactory{})
-	})
+func init() {
+	// 自定义组件
+	agollo.SetLogger(&logger.DefaultLogger{})
+	agollo.SetCache(&cache.ConfigMapCacheFactory{})
 
 	client, err := agollo.StartWithConfig(func() (*config.AppConfig, error) {
 		return c, nil
@@ -42,7 +36,7 @@ func InitApolloClient() {
 	clientInstance = &client
 }
 
-// 提供实例的暴露点
+// GetApolloClient 提供实例的暴露点
 func GetApolloClient() *agollo.Client {
 	if clientInstance == nil {
 		panic("Apollo client is not initialized")

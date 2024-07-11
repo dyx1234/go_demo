@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-demo-deployment
+  labels:
+    app: go-demo
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: go-demo
+  template:
+    metadata:
+      labels:
+        app: go-demo
+    spec:
+      containers:
+        - name: go-app
+          image: dyx2060307490/go-demo:latest  # 替换为你的镜像和标签
+          ports:
+            - containerPort: 8080  # 替换为你的应用程序监听的端口
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 200m
+              memory: 200Mi
+          # 如果你的应用需要环境变量，可以在这里添加
+          env:
+            - name: ENV_VAR_NAME
+              value: "value"
+          # 如果需要配置持久化存储，可以在这里添加 volumeMounts
+          # volumeMounts:
+          # - name: data-volume
+          #   mountPath: /path/to/mount
+      # 如果需要配置持久化存储，可以在这里添加 volumes
+      # volumes:
+      # - name: data-volume
+      #   emptyDir: {}
