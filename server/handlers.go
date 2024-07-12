@@ -20,8 +20,8 @@ type Handlers struct {
 }
 
 // Login 处理登录请求
-func (h Handlers) Login(c *gin.Context) {
-	var user UserCredentials
+func (h *Handlers) Login(c *gin.Context) {
+	var user *UserCredentials
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
